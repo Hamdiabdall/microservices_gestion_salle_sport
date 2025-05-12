@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - USER_SERVICE_URL=http://user-service:3000
+      - SESSION_SERVICE_URL=session-service:50051
+      - PAYMENT_SERVICE_URL=http://payment-service:4000
+      - NOTIFICATION_SERVICE_URL=http://notification-service:5000
+      - JWT_SECRET=your_jwt_secret_key
+    depends_on:
+      - user-service
+      - session-service
+      - payment-service
+      - notification-service
+    networks:
+      - gym_network
+      
+  # Databases
+  mongodb:
+    image: mongo:latest
+    container_name: gym-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - gym_network
+
+  postgres:
+    image: postgres:latest
+    container_name: gym-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=gym
+    networks:
+      - gym_network
+
+  # Kafka & Zookeeper for event streaming
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - gym_network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - gym_network
+
+  # Kafka UI for monitoring Kafka
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - gym_network
+
+  # User Service - REST API
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://root:password@mongodb:27017/user-service?authSource=admin
+      - JWT_SECRET=your_jwt_secret_key
+    depends_on:
+      - mongodb
+    networks:
+      - gym_network
+
+  # Session Service - gRPC
+  session-service:
+    build:
+      context: ./session-service
+      dockerfile: Dockerfile
+    container_name: session-service
+    ports:
+      - "50051:50051"
+    environment:
+      - POSTGRES_URI=postgres://postgres:password@postgres:5432/gym
+      - USER_SERVICE_URL=user-service:3000
+    depends_on:
+      - postgres
+      - user-service
+    networks:
+      - gym_network
+
+  # Payment Service - GraphQL
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://root:password@mongodb:27017/payment-service?authSource=admin
+      - KAFKA_BROKERS=kafka:9092
+      - USER_SERVICE_URL=user-service:3000
+    depends_on:
+      - mongodb
+      - kafka
+      - user-service
+    networks:
+      - gym_network
+
+  # Notification Service - Kafka Consumer
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      - NODE_ENV=development
+      - KAFKA_BROKERS=kafka:9092
+      - EMAIL_SERVICE=smtp://user:pass@smtp.example.com
+    depends_on:
+      - kafka
+    networks:
+      - gym_network
+
+networks:
+  gym_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  postgres_data:

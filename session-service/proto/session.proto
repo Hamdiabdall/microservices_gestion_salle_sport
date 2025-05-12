@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = "./proto";
+
+// SessionService defines the gRPC service for gym sessions and reservations
+service SessionService {
+  // Session Management
+  rpc CreateSession(CreateSessionRequest) returns (Session) {}
+  rpc GetSession(GetSessionRequest) returns (Session) {}
+  rpc UpdateSession(UpdateSessionRequest) returns (Session) {}
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse) {}
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {}
+  
+  // Reservation Management
+  rpc CreateReservation(CreateReservationRequest) returns (Reservation) {}
+  rpc GetReservation(GetReservationRequest) returns (Reservation) {}
+  rpc CancelReservation(CancelReservationRequest) returns (CancelReservationResponse) {}
+  rpc ListUserReservations(ListUserReservationsRequest) returns (ListReservationsResponse) {}
+  rpc ListSessionReservations(ListSessionReservationsRequest) returns (ListReservationsResponse) {}
+}
+
+// Session represents a training session at the gym
+message Session {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string coach_id = 4;
+  string coach_name = 5;
+  int32 capacity = 6;
+  int32 reserved_spots = 7;
+  string start_time = 8; // ISO8601 format
+  string end_time = 9;   // ISO8601 format
+  string location = 10;
+  string session_type = 11; // e.g., "yoga", "cardio", "strength"
+  string difficulty_level = 12; // e.g., "beginner", "intermediate", "advanced"
+  bool is_cancelled = 13;
+  string created_at = 14;
+  string updated_at = 15;
+}
+
+message CreateSessionRequest {
+  string title = 1;
+  string description = 2;
+  string coach_id = 3;
+  int32 capacity = 4;
+  string start_time = 5;
+  string end_time = 6;
+  string location = 7;
+  string session_type = 8;
+  string difficulty_level = 9;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message UpdateSessionRequest {
+  string session_id = 1;
+  string title = 2;
+  string description = 3;
+  string coach_id = 4;
+  int32 capacity = 5;
+  string start_time = 6;
+  string end_time = 7;
+  string location = 8;
+  string session_type = 9;
+  string difficulty_level = 10;
+  bool is_cancelled = 11;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+message DeleteSessionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListSessionsRequest {
+  string date = 1;       // Optional: filter by date (YYYY-MM-DD)
+  string session_type = 2; // Optional: filter by session type
+  string coach_id = 3;   // Optional: filter by coach
+  bool include_past = 4; // Include past sessions
+  int32 page = 5;        // Pagination
+  int32 limit = 6;       // Limit results per page
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// Reservation represents a member's booking for a session
+message Reservation {
+  string id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string user_name = 4;
+  string reservation_time = 5; // When the reservation was made
+  string status = 6;          // "confirmed", "cancelled", "attended"
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+message CreateReservationRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message GetReservationRequest {
+  string reservation_id = 1;
+}
+
+message CancelReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;       // For verification
+}
+
+message CancelReservationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListUserReservationsRequest {
+  string user_id = 1;
+  string status = 2;     // Optional: filter by status
+  bool include_past = 3; // Include past reservations
+  int32 page = 4;        // Pagination
+  int32 limit = 5;       // Limit results per page
+}
+
+message ListSessionReservationsRequest {
+  string session_id = 1;
+  string status = 2;     // Optional: filter by status
+  int32 page = 3;        // Pagination
+  int32 limit = 4;       // Limit results per page
+}
+
+message ListReservationsResponse {
+  repeated Reservation reservations = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
