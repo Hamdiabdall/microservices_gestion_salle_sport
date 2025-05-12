@@ -247,8 +247,38 @@ async function startConsumer() {
     await consumer.connect();
     console.log('Connected to Kafka');
     
-    // Subscribe to topics
-    await consumer.subscribe({ topics: ['session-events', 'payment-events'], fromBeginning: true });
+    // Define topics - ensure they are not undefined
+    const topics = ['session-events', 'payment-events'];
+    console.log('Subscribing to Kafka topics:', topics);
+    
+    // Create topics if they don't exist
+    const admin = kafka.admin();
+    await admin.connect();
+    
+    try {
+      await admin.createTopics({
+        topics: topics.map(topic => ({
+          topic,
+          numPartitions: 1,
+          replicationFactor: 1
+        }))
+      });
+      console.log('Topics created successfully');
+    } catch (e) {
+      console.log('Topics may already exist:', e.message);
+    }
+    
+    await admin.disconnect();
+    
+    // Subscribe to topics with error handling - explicitly define each topic
+    for (const topic of topics) {
+      try {
+        console.log(`Subscribing to topic: ${topic}`);
+        await consumer.subscribe({ topic, fromBeginning: true });
+      } catch (err) {
+        console.error(`Error subscribing to topic ${topic}:`, err.message);
+      }
+    }
     
     // Setup message consumption
     await consumer.run({

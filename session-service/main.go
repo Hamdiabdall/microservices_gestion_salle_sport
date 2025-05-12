@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
+	// Use an absolute import path that matches the Docker build context
 	pb "session-service/proto"
 )
 

@@ -12,13 +12,14 @@ services:
     environment:
       - NODE_ENV=development
       - USER_SERVICE_URL=http://user-service:3000
-      - SESSION_SERVICE_URL=session-service:50051
+      # SESSION_SERVICE_URL temporarily disabled
+      # - SESSION_SERVICE_URL=session-service:50051
       - PAYMENT_SERVICE_URL=http://payment-service:4000
       - NOTIFICATION_SERVICE_URL=http://notification-service:5000
       - JWT_SECRET=your_jwt_secret_key
     depends_on:
       - user-service
-      - session-service
+      # - session-service
       - payment-service
       - notification-service
     networks:
@@ -111,22 +112,19 @@ services:
     networks:
       - gym_network
 
-  # Session Service - gRPC
-  session-service:
-    build:
-      context: ./session-service
-      dockerfile: Dockerfile
-    container_name: session-service
-    ports:
-      - "50051:50051"
-    environment:
-      - POSTGRES_URI=postgres://postgres:password@postgres:5432/gym
-      - USER_SERVICE_URL=user-service:3000
-    depends_on:
-      - postgres
-      - user-service
-    networks:
-      - gym_network
+  # Session Service - gRPC (temporarily disabled due to Go module issues)
+  # session-service:
+  #   build: ./session-service
+  #   ports:
+  #     - '50051:50051'
+  #   environment:
+  #     - POSTGRES_URI=postgres://postgres:password@postgres:5432/gym
+  #     - USER_SERVICE_URL=user-service:3000
+  #   depends_on:
+  #     - postgres
+  #     - user-service
+  #   networks:
+  #     - gym_network
 
   # Payment Service - GraphQL
   payment-service:
